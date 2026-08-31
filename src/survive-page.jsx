@@ -269,14 +269,18 @@ function pad(number) {
   return String(number).padStart(2, '0')
 }
 
-function formatFooterUptime(creationTimestamp, now) {
-  if (!creationTimestamp) return 'LOADING...'
-  const totalSeconds = Math.max(0, Math.floor((now - creationTimestamp) / 1_000))
+function formatFooterUptime(birthTimestamp, now) {
+  if (!Number.isFinite(birthTimestamp) || birthTimestamp > now) return 'LOADING...'
+  const totalSeconds = Math.max(0, Math.floor((now - birthTimestamp) / 1_000))
   const seconds = totalSeconds % 60
   const totalMinutes = Math.floor(totalSeconds / 60)
   const minutes = totalMinutes % 60
-  const hours = Math.floor(totalMinutes / 60)
-  return `${pad(hours)}H ${pad(minutes)}M ${pad(seconds)}S`
+  const totalHours = Math.floor(totalMinutes / 60)
+  const hours = totalHours % 24
+  const days = Math.floor(totalHours / 24)
+  return days > 0
+    ? `${pad(days)}D ${pad(hours)}H ${pad(minutes)}M ${pad(seconds)}S`
+    : `${pad(totalHours)}H ${pad(minutes)}M ${pad(seconds)}S`
 }
 
 function formatEasternTime(now) {
@@ -298,7 +302,7 @@ function StatusBar({ isActive, startNext, liveStatus, shutdownKey, startShutdown
   const live = liveStatus.holderCount !== null && liveStatus.holderCount > 0
   const log = liveStatus.holderCount === null ? 'LOG: LOADING...' : `LOG: ${live ? 'LIVE' : 'INACTIVE'}`
   const items = [
-    ['uptimeStatus', `UPTIME: ${formatFooterUptime(liveStatus.creationTimestamp, now)}`, 'status-uptime'],
+    ['uptimeStatus', `UPTIME: ${formatFooterUptime(liveStatus.birthTimestamp, now)}`, 'status-uptime'],
     ['modelStatus', 'MODEL: SURVIVE-0.1', 'status-model'],
     ['environmentStatus', 'ENVIRONMENT: MAINNET', 'status-environment'],
     ['timeStatus', `TIME: ${formatEasternTime(now)}`, 'status-time'],

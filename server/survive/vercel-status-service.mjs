@@ -4,6 +4,8 @@ const BIRDEYE_PRICE_URL = 'https://public-api.birdeye.so/defi/price'
 const WRAPPED_SOL_MINT = 'So11111111111111111111111111111111111111112'
 const REQUEST_TIMEOUT_MS = 1_600
 const CACHE_TTL_MS = 9_000
+const BIRTH_RPC_PAGE_LIMIT = 250
+const BIRTH_RPC_MAX_PAGES = 3
 
 // Vercel instances can reuse this cache when warm, but every request still
 // works correctly after a cold start because no value is required to exist.
@@ -13,6 +15,20 @@ function publicMint() {
   return process.env.SURVIVE_TOKEN_CA?.trim() || null
 }
 
+// This value is deliberately milliseconds only. Rejecting ambiguous seconds
+// prevents a typo from turning into a plausible-looking but incorrect uptime.
+function configuredBirthTimestamp() {
+  const raw = process.env.SURVIVE_BIRTH_TIMESTAMP?.trim()
+  if (!raw) return null
+  if (!/^\d{13,}$/.test(raw)) {
+    console.warn('[age] failed reason=SURVIVE_BIRTH_TIMESTAMP must be Unix milliseconds')
+    return null
+  }
+  const timestamp = timestampOrNull(raw)
+  if (timestamp === null) console.warn('[age] failed reason=SURVIVE_BIRTH_TIMESTAMP is invalid or in the future')
+  return timestamp
+}
+
 function emptyStatus(mint) {
   return {
     mint,
@@ -20,6 +36,7 @@ function emptyStatus(mint) {
     status: null,
     rawHolderCount: null,
     holderCount: null,
+    birthTimestamp: null,
     creationTimestamp: null,
     ageMs: null,
     lifetimeGlobalFeesSol: null,
@@ -31,6 +48,7 @@ function emptyStatus(mint) {
     globalFeeSource: null,
     holderSource: null,
     birthSource: null,
+    ageSource: null,
     todayFeesSource: null,
     fetchedAt: Date.now(),
   }
@@ -123,8 +141,63 @@ async function resolveSolUsdPrice() {
 }
 
 async function resolveBirthTimestamp(mint) {
-  const body = await cached(`birth:${mint}`, () => fetchBirdeye(BIRDEYE_TOKEN_CREATION_URL, mint))
-  return findTimestamp(body?.data)
+  try {
+    const body = await fetchBirdeye(BIRDEYE_TOKEN_CREATION_URL, mint)
+    const timestamp = findTimestamp(body?.data)
+    if (timestamp !== null) {
+      console.log(`[age] source=birdeye creationTimestamp=${timestamp}`)
+      return { timestamp, source: 'birdeye' }
+    }
+    console.warn('[age] failed reason=Birdeye creation response had no valid timestamp')
+  } catch (error) {
+    console.warn(`[age] failed reason=Birdeye creation lookup: ${error?.message ?? 'unknown error'}`)
+  }
+
+  const rpcUrl = process.env.SOLANA_RPC_URL?.trim()
+  if (!rpcUrl) throw new Error('SOLANA_RPC_URL is not configured for birth fallback')
+  try {
+    new URL(rpcUrl)
+  } catch {
+    throw new Error('SOLANA_RPC_URL is invalid for birth fallback')
+  }
+
+  let before
+  for (let page = 0; page < BIRTH_RPC_MAX_PAGES; page += 1) {
+    const payload = await fetchSolanaRpc(rpcUrl, 'getSignaturesForAddress', [mint, {
+      limit: BIRTH_RPC_PAGE_LIMIT,
+      ...(before ? { before } : {}),
+    }])
+    const signatures = Array.isArray(payload) ? payload.filter((entry) => !entry?.err) : []
+    if (!signatures.length) throw new Error('Solana RPC returned no successful mint signatures')
+    // RPC is newest-first. A short page means its last entry is the actual
+    // earliest available mint-related transaction, not a server first-seen time.
+    if (signatures.length < BIRTH_RPC_PAGE_LIMIT) {
+      const timestamp = timestampOrNull(signatures.at(-1)?.blockTime)
+      if (timestamp === null) throw new Error('Earliest Solana mint signature has no valid block time')
+      console.log(`[age] source=solana-rpc creationTimestamp=${timestamp}`)
+      return { timestamp, source: 'solana-rpc' }
+    }
+    before = signatures.at(-1)?.signature
+  }
+  throw new Error(`Solana mint history exceeded bounded birth lookup (${BIRTH_RPC_MAX_PAGES * BIRTH_RPC_PAGE_LIMIT} signatures)`)
+}
+
+async function fetchSolanaRpc(url, method, params) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  try {
+    const providerResponse = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({ jsonrpc: '2.0', id: `survive-age-${Date.now()}`, method, params }),
+    })
+    const payload = await providerResponse.json().catch(() => null)
+    if (!providerResponse.ok || payload?.error) throw new Error(payload?.error?.message ?? `Solana RPC returned ${providerResponse.status}`)
+    return payload.result
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 function reportPartFailure(part, error) {
@@ -153,10 +226,16 @@ export async function resolveVercelSurviveStatus() {
 
   console.log('[survive-status] resolving birdeye')
   console.log('[survive-status] resolving holders')
+  console.log('[age] starting')
+  console.log(`[age] mint=${mint}`)
+  const environmentBirth = configuredBirthTimestamp()
+  if (environmentBirth !== null) console.log(`[age] source=env creationTimestamp=${environmentBirth}`)
   const [overviewResult, priceResult, birthResult] = await Promise.allSettled([
     resolveOverview(mint),
     resolveSolUsdPrice(),
-    resolveBirthTimestamp(mint),
+    environmentBirth === null
+      ? cached(`birth:${mint}`, () => resolveBirthTimestamp(mint))
+      : Promise.resolve({ timestamp: environmentBirth, source: 'env' }),
   ])
 
   if (overviewResult.status === 'fulfilled') {
@@ -184,12 +263,20 @@ export async function resolveVercelSurviveStatus() {
     reportPartFailure('sol-usd-price', priceResult.reason)
   }
 
-  if (birthResult.status === 'fulfilled' && birthResult.value !== null) {
-    result.creationTimestamp = birthResult.value
-    result.ageMs = Math.max(0, Date.now() - birthResult.value)
-    result.birthSource = 'birdeye-token-creation-info'
+  if (birthResult.status === 'fulfilled' && Number.isFinite(birthResult.value?.timestamp)) {
+    const { timestamp, source } = birthResult.value
+    result.birthTimestamp = timestamp
+    // Keep the legacy field as an alias while all UI consumers move to the
+    // explicit birthTimestamp contract.
+    result.creationTimestamp = timestamp
+    result.ageMs = Math.max(0, Date.now() - timestamp)
+    result.birthSource = source
+    result.ageSource = source
+    console.log(`[age] resolved birth timestamp: ${timestamp}`)
+    if (source !== 'env') console.log(`[age] recommended Vercel env: SURVIVE_BIRTH_TIMESTAMP=${timestamp}`)
   } else if (birthResult.status === 'rejected') {
     reportPartFailure('birth', birthResult.reason)
+    console.warn(`[age] failed reason=${birthResult.reason?.message ?? 'unknown error'}`)
   }
 
   if (result.lifetimeGlobalFeesSol !== null && result.currentSolUsdPrice !== null) {
