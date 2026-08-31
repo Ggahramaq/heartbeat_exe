@@ -1,0 +1,31 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 32 32"
+>
+  <rect width="32" height="32" fill="#000"/>
+
+  <path
+    d="
+      M2 16
+      H8
+      L11 7
+      L15 24
+      L19 11
+      L22 16
+      H26
+    "
+    fill="none"
+    stroke="#fff"
+    stroke-width="2.6"
+    stroke-linecap="square"
+    stroke-linejoin="miter"
+  />
+
+  <rect
+    x="26"
+    y="13"
+    width="4"
+    height="6"
+    fill="#fff"
+  />
+</svg>
