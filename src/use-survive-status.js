@@ -27,11 +27,14 @@ export function useSurviveStatus() {
 
   useEffect(() => {
     let cancelled = false
+    let refreshTimer
     const load = async () => {
+      let hasUnresolvedFields = true
       try {
         const response = await fetch('/api/survive-status')
         if (!response.ok) throw new Error(`Status request failed (${response.status})`)
         const snapshot = await response.json()
+        hasUnresolvedFields = snapshot.holderCount === null || snapshot.balanceUsd === null || snapshot.creationTimestamp === null
         if (!cancelled) {
           // The browser consumes a server-owned snapshot. Nulls mean the
           // backend is still resolving that value, not that an earlier value
@@ -45,16 +48,19 @@ export function useSurviveStatus() {
         }
       } catch {
         // Unavailable providers intentionally remain LOADING... in the UI.
+      } finally {
+        // A serverless cold start may intentionally publish CA plus partial
+        // data. Retry only unresolved initial fields quickly; normal operation
+        // continues at the existing ten-second cadence.
+        if (!cancelled) refreshTimer = window.setTimeout(load, hasUnresolvedFields ? 2_000 : 10_000)
       }
     }
 
-    load()
+    void load()
     const ageTimer = window.setInterval(() => setNow(Date.now()), 30_000)
-    // This only reads the local backend snapshot. It never talks to QuickNode.
-    const snapshotTimer = window.setInterval(load, 10_000)
     return () => {
       cancelled = true
-      window.clearInterval(ageTimer); window.clearInterval(snapshotTimer)
+      window.clearInterval(ageTimer); window.clearTimeout(refreshTimer)
     }
   }, [])
 

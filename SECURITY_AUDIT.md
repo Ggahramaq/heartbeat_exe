@@ -20,7 +20,7 @@ Their values are intentionally not recorded in this document. `.env` is ignored 
 
 | Area | Result |
 | --- | --- |
-| Git repository/history | No Git repository exists in this directory, so there is no local commit, staged-file, remote, or history state to inspect. |
+| Git repository/history | Reachable Git history was checked against the currently configured credential values; no match was found. |
 | Secret handling | `.env` contains real credentials locally; it is ignored. `.env.example` now contains placeholders only. No configured secret value was found in `dist/`. |
 | Browser bundle | No `VITE_*` variables or provider credentials are emitted to the production bundle. |
 | Server-only provider keys | Birdeye and OpenAI keys are accessed only from `server/` modules. Helius configuration remains server-only. |
@@ -38,7 +38,7 @@ Their values are intentionally not recorded in this document. `.env` is ignored 
 - **Location:** local `.env` (intentionally omitted from source and this report)
 - **Scenario:** A populated `.env` file is copied, committed with force, included in a zip, shared in terminal output, or its values were previously exposed elsewhere.
 - **Impact:** Unauthorized provider usage, API-credit loss, provider-account compromise, or access to usage data.
-- **Current protection:** `.env` and all `.env.*` variants are ignored in [.gitignore](.gitignore:4); the production bundle scan passed; no Git repository/history exists in this directory.
+- **Current protection:** `.env` and all `.env.*` variants are ignored in [.gitignore](.gitignore:4); the production bundle scan passed; the reachable Git history scan found no configured credential value.
 - **Required fix:** Rotate OpenAI, Birdeye, and Helius credentials before creating/pushing the public repository. Keep only placeholders in [.env.example](.env.example:1).
 - **Status:** **Action required outside the codebase.**
 

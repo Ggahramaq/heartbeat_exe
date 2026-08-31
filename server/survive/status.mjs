@@ -15,7 +15,7 @@ const EMPTY = {
 }
 const verifyingBirths = new Set()
 
-function base(mint) { return { mint, ...EMPTY, fetchedAt: Date.now() } }
+function base(mint) { return { mint, ...EMPTY, ca: mint, fetchedAt: Date.now() } }
 // This is deliberately RPC-free. The status poller uses it before its first
 // successful read so visitors can receive a stable LOADING snapshot without
 // causing a live blockchain request of their own.

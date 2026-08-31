@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { getConfig } from './config.mjs'
-import { decodePumpTradeEvents, lamportsToSol } from './pump-events.mjs'
+import { decodePumpTradeEvents } from './pump-events.mjs'
+import { normalizePumpEvents, sortNewestEvents } from './event-normalize.mjs'
 import { canonicalPumpSwapPool, connectionFor, getPumpBondingCurve } from './solana.mjs'
 
 const MAX_EVENT_BUFFER = 500
@@ -73,36 +74,9 @@ function rememberSignature(signature) {
   return true
 }
 
-function normalizeEvents(signature, decoded) {
-  const result = []
-  for (const trade of decoded) {
-    result.push({
-      id: `${signature}:${trade.eventIndex}:trade`,
-      signature,
-      timestamp: trade.timestampMs,
-      type: trade.type,
-      tone: trade.tone,
-      amountSol: lamportsToSol(trade.amountLamports),
-    })
-    if (trade.feeLamports > 0n) {
-      result.push({
-        id: `${signature}:${trade.eventIndex}:fee`,
-        signature,
-        timestamp: trade.timestampMs,
-        type: 'FEE',
-        tone: 'positive',
-        amountSol: lamportsToSol(trade.feeLamports),
-      })
-    }
-  }
-  return result
-}
-
 function appendEvents(incoming) {
   if (!incoming.length) return
-  events = [...incoming, ...events]
-    .sort((left, right) => right.timestamp - left.timestamp || right.id.localeCompare(left.id))
-    .slice(0, MAX_EVENT_BUFFER)
+  events = sortNewestEvents([...incoming, ...events]).slice(0, MAX_EVENT_BUFFER)
   developmentLog(`buffer size: ${events.length}`)
   broadcast({ kind: 'events', events: incoming })
 }
@@ -115,7 +89,7 @@ function decodeAndAppend(signature, logMessages, fallbackTimestampMs) {
     pool: context.pool,
     fallbackTimestampMs,
   })
-  const normalized = normalizeEvents(signature, decoded)
+  const normalized = normalizePumpEvents(signature, decoded)
   for (const event of normalized) developmentLog(`decoded: ${event.type} ${event.amountSol.toFixed(6)} SOL`)
   appendEvents(normalized)
 }
@@ -255,7 +229,7 @@ async function loadRecentHistory() {
       pool: context.pool,
       fallbackTimestampMs: transaction.blockTime ? transaction.blockTime * 1_000 : Date.now(),
     })
-    appendEvents(normalizeEvents(entry.signature, decoded))
+    appendEvents(normalizePumpEvents(entry.signature, decoded))
   })
 }
 

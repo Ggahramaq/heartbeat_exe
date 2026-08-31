@@ -86,6 +86,13 @@ app.get('/api/event-log', (_request, response) => {
   response.json(getSurviveEventLogSnapshot())
 })
 
+// The Vercel path uses the same small JSON contract through /api/events. In
+// local development this reads the existing shared WebSocket buffer instead.
+app.get('/api/events', (_request, response) => {
+  response.set('Cache-Control', 'no-store')
+  response.json({ ...getSurviveEventLogSnapshot(), streaming: true })
+})
+
 app.get('/api/event-log/stream', (request, response) => {
   const key = clientKey(request)
   const clientStreams = eventStreamsByClient.get(key) ?? 0

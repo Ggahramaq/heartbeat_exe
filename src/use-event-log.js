@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 export const EVENT_LOG_RENDER_INTERVAL_MS = 500
+const EVENT_LOG_FETCH_INTERVAL_MS = 2_000
 const MAX_VISIBLE_EVENTS = 5
 const LIVE_INSERT_CADENCE_MS = 100
 const MAX_SEQUENTIAL_LIVE_EVENTS = 5
@@ -22,6 +23,7 @@ export function useEventLog() {
   const liveQueueRef = useRef([])
   const queuedIdsRef = useRef(new Set())
   const drainTimerRef = useRef(null)
+  const knownEventIdsRef = useRef(new Set())
 
   useEffect(() => {
     const stopDrain = () => {
@@ -85,11 +87,81 @@ export function useEventLog() {
       pendingRef.current.error = false
     }
 
-    const stream = new EventSource('/api/event-log/stream')
-    stream.onmessage = (message) => {
-      try { queue(JSON.parse(message.data)) } catch { pendingRef.current.error = true }
+    let cancelled = false
+    let initialSnapshot = true
+    let recoveringFromError = false
+    let stream = null
+    let fetchTimer = null
+    const rememberEventIds = (events) => {
+      for (const event of events) knownEventIdsRef.current.add(event.id)
+      while (knownEventIdsRef.current.size > 100) {
+        const oldest = knownEventIdsRef.current.values().next().value
+        knownEventIdsRef.current.delete(oldest)
+      }
     }
-    stream.onerror = () => { pendingRef.current.error = true }
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch('/api/events', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Event Log request failed')
+        const payload = await response.json()
+        if (cancelled) return
+        if (payload.error) {
+          recoveringFromError = true
+          queue({ error: true })
+          return
+        }
+        const events = Array.isArray(payload.events) ? payload.events : []
+        if (payload.streaming) {
+          if (!stream) {
+            initialSnapshot = false
+            recoveringFromError = false
+            knownEventIdsRef.current = new Set(events.map((event) => event.id))
+            queue({ kind: 'snapshot', events })
+            stream = new EventSource('/api/event-log/stream')
+            stream.onmessage = (message) => {
+              try {
+                const livePayload = JSON.parse(message.data)
+                if (livePayload.kind === 'snapshot') knownEventIdsRef.current = new Set((livePayload.events ?? []).map((event) => event.id))
+                else rememberEventIds(livePayload.events ?? [])
+                queue(livePayload)
+              } catch { pendingRef.current.error = true }
+            }
+            stream.onerror = () => {
+              if (cancelled) return
+              stream?.close()
+              stream = null
+              recoveringFromError = true
+              queue({ error: true })
+              startPolling()
+            }
+            if (fetchTimer) window.clearInterval(fetchTimer)
+            fetchTimer = null
+          }
+          return
+        }
+        if (initialSnapshot || recoveringFromError) {
+          initialSnapshot = false
+          recoveringFromError = false
+          knownEventIdsRef.current = new Set(events.map((event) => event.id))
+          queue({ kind: 'snapshot', events })
+          return
+        }
+        const incoming = events.filter((event) => !knownEventIdsRef.current.has(event.id))
+        rememberEventIds(events)
+        if (incoming.length) queue({ kind: 'events', events: incoming })
+      } catch {
+        if (!cancelled) {
+          recoveringFromError = true
+          queue({ error: true })
+        }
+      }
+    }
+
+    const startPolling = () => {
+      if (!fetchTimer) fetchTimer = window.setInterval(() => { void fetchEvents() }, EVENT_LOG_FETCH_INTERVAL_MS)
+    }
+    startPolling()
+    void fetchEvents()
 
     const renderTimer = window.setInterval(() => {
       const pending = pendingRef.current
@@ -118,7 +190,9 @@ export function useEventLog() {
     }, EVENT_LOG_RENDER_INTERVAL_MS)
 
     return () => {
-      stream.close()
+      cancelled = true
+      if (fetchTimer) window.clearInterval(fetchTimer)
+      stream?.close()
       window.clearInterval(renderTimer)
       stopDrain()
     }
