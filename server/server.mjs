@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { getSurviveEventLogSnapshot, startSurviveEventLog, subscribeToSurviveEventLog } from './survive/event-log.mjs'
 import { getSurviveStatusSnapshot, startSurviveStatusPoller } from './survive/status-poller.mjs'
 import { handleTalkChat } from './survive/chat.mjs'
+import { getEnvironmentAvailability } from './survive/env-check.mjs'
 
 const production = process.argv.includes('--production')
 if (existsSync(resolve('.env'))) process.loadEnvFile(resolve('.env'))
@@ -77,6 +78,13 @@ startSurviveEventLog()
 app.get('/api/survive-status', (_request, response) => {
   response.set('Cache-Control', 'no-store')
   response.json(getSurviveStatusSnapshot())
+})
+
+// Matches the Vercel diagnostic without ever returning configuration values.
+app.get('/api/env-check', (_request, response) => {
+  response.set('Cache-Control', 'no-store')
+  const env = getEnvironmentAvailability()
+  response.json({ ok: Object.values(env).every(Boolean), env })
 })
 
 app.post('/api/chat', requireSameOrigin, (request, response) => { void handleTalkChat(request, response) })
