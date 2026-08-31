@@ -39,7 +39,7 @@ function eventDataFromLogs(logMessages) {
 // These layouts are taken from Pump's public Pump/PumpSwap IDLs. The same
 // fee components are consumed by the global-fee indexer; this module merely
 // additionally exposes real trade direction and SOL amount for EVENT LOG.
-export function decodePumpTradeEvents({ logMessages, mint, pool, fallbackTimestampMs = Date.now() }) {
+export function decodePumpTradeEvents({ logMessages, mint, pool, allowUnverifiedAmm = false, fallbackTimestampMs = Date.now() }) {
   const decoded = []
   let eventIndex = 0
   for (const data of eventDataFromLogs(logMessages)) {
@@ -61,7 +61,7 @@ export function decodePumpTradeEvents({ logMessages, mint, pool, fallbackTimesta
 
     if (startsWith(data, AMM_BUY_EVENT) || startsWith(data, AMM_SELL_EVENT)) {
       if (data.length < 360) throw new Error('Malformed PumpSwap trade event')
-      if (!pool || !data.subarray(120, 152).equals(pool.toBuffer())) continue
+      if (!allowUnverifiedAmm && (!pool || !data.subarray(120, 152).equals(pool.toBuffer()))) continue
       const isBuy = startsWith(data, AMM_BUY_EVENT)
       decoded.push({
         eventIndex: eventIndex += 1,
