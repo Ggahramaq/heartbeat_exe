@@ -2,8 +2,6 @@ import { readMintIndex, writeMintIndex } from './index-store.mjs'
 import { easternMidnightUtcMs } from './time.mjs'
 
 const ENDPOINT = 'https://public-api.birdeye.so/defi/token_overview'
-const MEME_DETAIL_ENDPOINT = 'https://public-api.birdeye.so/defi/v3/token/meme/detail/single'
-const CREATION_INFO_ENDPOINT = 'https://public-api.birdeye.so/defi/token_creation_info'
 const BOOTSTRAP_KIND = 'birdeye-global-fees-v1'
 const FAST_PATH_TARGET_MS = 3_000
 const MAX_EXPECTED_MS = 5_000
@@ -16,7 +14,6 @@ const OVERVIEW_TTL_MS = 9_000
 // hour.
 const QUOTA_COOLDOWN_MS = 10_000
 const overviewCache = new Map()
-let creationInfoAvailable
 let overviewUnavailableUntil = 0
 
 function toLamports(value) {
@@ -36,30 +33,6 @@ function statsFromBootstrap(bootstrap, creationTimestamp) {
     todayGlobalFeesSol: today,
     feeSource: 'birdeye-bootstrap',
   }
-}
-
-function normalizeTimestamp(value) {
-  const number = typeof value === 'string' && !/^\d+(\.\d+)?$/.test(value.trim())
-    ? Date.parse(value)
-    : Number(value)
-  if (!Number.isFinite(number)) return null
-  const ms = number < 10_000_000_000 ? number * 1_000 : number
-  return ms > 1_500_000_000_000 && ms <= Date.now() + 60_000 ? Math.round(ms) : null
-}
-
-function firstTimestamp(value, keys) {
-  if (!value || typeof value !== 'object') return null
-  for (const [key, candidate] of Object.entries(value)) {
-    if (keys.has(key.toLowerCase())) {
-      const timestamp = normalizeTimestamp(candidate)
-      if (timestamp !== null) return timestamp
-    }
-    if (candidate && typeof candidate === 'object') {
-      const timestamp = firstTimestamp(candidate, keys)
-      if (timestamp !== null) return timestamp
-    }
-  }
-  return null
 }
 
 async function requestJson(endpoint, mint, apiKey) {
@@ -127,43 +100,6 @@ export async function getBirdeyeTokenOverview(mint) {
     })
   overviewCache.set(mint, { promise, expiresAt: Date.now() + OVERVIEW_TTL_MS })
   return promise
-}
-
-export async function getBirdeyeBirthTimestamp(mint) {
-  const stored = (await readMintIndex(mint)) ?? {}
-  if (stored.birdeyeBirth?.timestampMs) return { timestampMs: stored.birdeyeBirth.timestampMs, source: stored.birdeyeBirth.source, resolvedMs: 0 }
-  const apiKey = process.env.BIRDEYE_API_KEY?.trim()
-  if (!apiKey) return null
-
-  const startedAt = performance.now()
-  const creation = creationInfoAvailable === false
-    ? Promise.resolve(null)
-    : requestJson(CREATION_INFO_ENDPOINT, mint, apiKey).catch((error) => {
-      if (error.status === 401 || error.status === 403) creationInfoAvailable = false
-      if (process.env.NODE_ENV !== 'production') console.warn(`[birdeye:birth] creation-info unavailable: ${error.message}`)
-      return null
-    })
-  const meme = requestJson(MEME_DETAIL_ENDPOINT, mint, apiKey).catch((error) => {
-    if (process.env.NODE_ENV !== 'production') console.warn(`[birdeye:birth] meme-detail unavailable: ${error.message}`)
-    return null
-  })
-  const [creationBody, memeBody] = await Promise.all([creation, meme])
-  if (process.env.NODE_ENV !== 'production') {
-    console.info(`[birdeye:birth] creationFields=${Object.keys(creationBody?.data ?? {}).join(',')} memeFields=${Object.keys(memeBody?.data ?? {}).join(',')}`)
-  }
-  const creationTimestamp = firstTimestamp(creationBody?.data, new Set(['blocktime', 'block_time', 'creationtime', 'creation_time', 'createdat', 'created_at', 'createdtime', 'created_time', 'timestamp']))
-  const memeTimestamp = firstTimestamp(memeBody?.data, new Set(['listingtime', 'listing_time', 'listingat', 'listing_at', 'listtime', 'list_time', 'launchtime', 'launch_time', 'launchat', 'launch_at', 'createdat', 'created_at', 'createdtime', 'created_time', 'timestamp']))
-  const timestampMs = creationTimestamp ?? memeTimestamp
-  if (timestampMs === null) {
-    if (process.env.NODE_ENV !== 'production') console.warn(`[birdeye] birth timestamp missing for mint=${mint}`)
-    return null
-  }
-  const source = creationTimestamp !== null ? 'birdeye-creation-info' : 'birdeye-meme-detail'
-  const resolvedMs = Math.round(performance.now() - startedAt)
-  if (process.env.NODE_ENV !== 'production') console.info(`[age] timestamp candidate=${timestampMs} normalized=${timestampMs} source=${source} mint=${mint}`)
-  await writeMintIndex(mint, { birdeyeBirth: { timestampMs, source, cachedAt: Date.now() } })
-  if (process.env.NODE_ENV !== 'production') console.info(`[survive] birth=${new Date(timestampMs).toISOString()} source=${source} resolved=${resolvedMs}ms mint=${mint}`)
-  return { timestampMs, source, resolvedMs }
 }
 
 // One cold-start request per mint. The result is persisted and served by our

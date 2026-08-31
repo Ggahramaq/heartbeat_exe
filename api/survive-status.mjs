@@ -10,7 +10,7 @@ export default async function handler(request, response) {
     const snapshot = await resolveVercelSurviveStatus()
     // Do not CDN-cache a cold-start partial response. That lets the browser
     // retry promptly while keeping complete public snapshots shared at Vercel.
-    if (snapshot.balanceUsd !== null || snapshot.holderCount !== null || snapshot.birthTimestamp !== null) {
+    if (snapshot.balanceUsd !== null || snapshot.holderCount !== null || snapshot.deploymentTimestamp !== null) {
       response.setHeader('Cache-Control', STATUS_CACHE_CONTROL)
       response.setHeader('Vercel-CDN-Cache-Control', STATUS_CACHE_CONTROL)
     }

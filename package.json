@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server/server.mjs",
-    "build": "vite build",
+    "dev": "node scripts/generate-build-info.mjs && node server/server.mjs",
+    "build": "node scripts/generate-build-info.mjs && vite build",
     "preview": "vite preview",
     "start": "node server/server.mjs --production"
   },

@@ -11,3 +11,4 @@ logs/
 .DS_Store
 .vscode/
 .idea/
+server/survive/generated-build-info.mjs

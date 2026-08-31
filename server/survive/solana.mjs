@@ -10,15 +10,11 @@ export const PUMP_PROGRAM_ID = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14
 export const PUMP_AMM_PROGRAM_ID = new PublicKey('pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA')
 const NATIVE_MINT = new PublicKey('So11111111111111111111111111111111111111112')
 let nextRpcReadAt = 0
-let nextDiscoveryReadAt = 0
 let nextInitialIndexReadAt = 0
 // This one application-wide gate covers standard Helius Solana reads used by
 // compatibility fallbacks, the price feed, and creation scan. The enhanced
 // Helius history/holder methods below have their own bounded request paths.
 const RPC_READ_INTERVAL_MS = 500
-// Birth discovery is a bounded cold-start operation and gets its own startup
-// lane, avoiding a multi-minute crawl for a very active new coin.
-const DISCOVERY_READ_INTERVAL_MS = 85
 // Standard JSON-RPC fallback batches still need bounded pressure, leaving
 // capacity for status/price/holder reads on the same Helius endpoint.
 const INITIAL_INDEX_READ_INTERVAL_MS = 100
@@ -152,27 +148,6 @@ export async function initialIndexBatchRpc(operation, requestCount, label = 'Ini
   throw lastError ?? new Error(`${label} failed`)
 }
 
-async function discoveryRpcWithRetry(operation, label = 'Creation discovery') {
-  let lastError
-  for (let attempt = 0; attempt < 7; attempt += 1) {
-    const scheduledAt = Math.max(Date.now(), nextDiscoveryReadAt)
-    nextDiscoveryReadAt = scheduledAt + DISCOVERY_READ_INTERVAL_MS
-    const waitMs = scheduledAt - Date.now()
-    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs))
-    try {
-      return await operation()
-    } catch (error) {
-      lastError = error
-      const retryable = isRetryableProviderError(error)
-      if (!retryable || attempt === 6) break
-      const retryDelayMs = 700 * 2 ** attempt
-      nextDiscoveryReadAt = Math.max(nextDiscoveryReadAt, Date.now() + retryDelayMs)
-      await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
-    }
-  }
-  throw lastError ?? new Error(`${label} failed`)
-}
-
 // Kept as the indexer's semantic call-site; rpcWithRetry now owns the shared
 // application-wide rate gate above.
 export async function throttledRpc(operation, label = 'RPC read', perf) {
@@ -234,77 +209,6 @@ export async function getPositiveHolderCount(connection, mintAddress, heliusRpcU
     resolvedMs: Math.round(performance.now() - scanStartedAt),
     source: 'helius-getProgramAccountsV2',
   }
-}
-
-function isMintInitialization(transaction, mint) {
-  const instructions = [
-    ...(transaction?.transaction?.message?.instructions ?? []),
-    ...(transaction?.meta?.innerInstructions?.flatMap((group) => group.instructions) ?? []),
-  ]
-  return instructions.some((instruction) => {
-    const type = instruction?.parsed?.type?.toLowerCase()
-    return type?.startsWith('initializemint') && instruction.parsed.info?.mint === mint
-  })
-}
-
-export async function findMintCreationTimestamp(connection, mintAddress) {
-  const mint = new PublicKey(mintAddress)
-  let before
-  // The RPC returns newest first. Walk to the earliest history page, then
-  // positively identify initializeMint/initializeMint2 instead of using a pair
-  // timestamp or treating an arbitrary interaction as creation.
-  for (let page = 0; page < 100; page += 1) {
-    const signatures = await rpcWithRetry(() => connection.getSignaturesForAddress(mint, { before, limit: 1000 }), 'Mint signature history')
-    if (!signatures.length) throw new Error('Mint has no available transaction history')
-    if (signatures.length < 1000) {
-      for (const entry of [...signatures].reverse()) {
-        const transaction = await rpcWithRetry(() => connection.getParsedTransaction(entry.signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }), 'Mint creation transaction')
-        if (isMintInitialization(transaction, mintAddress) && transaction?.blockTime) return transaction.blockTime * 1000
-      }
-      throw new Error('Mint initialization transaction was not available from RPC history')
-    }
-    before = signatures.at(-1).signature
-  }
-  throw new Error('Mint history exceeded the safe creation scan limit')
-}
-
-// Pump's bonding-curve PDA is present in the create transaction and each Pump
-// trade, unlike the mint address which is also present in unrelated wallet
-// transfers. For new launches this normally resolves the true initializeMint
-// transaction in one history page and one parsed-transaction read.
-export async function findPumpMintCreationTimestamp(connection, mintAddress) {
-  const curve = await getPumpBondingCurve(connection, mintAddress)
-  if (!curve) return null
-  let before
-  let signaturesSeen = 0
-  const startedAt = performance.now()
-  for (let page = 0; page < 64; page += 1) {
-    const signatures = await discoveryRpcWithRetry(
-      () => connection.getSignaturesForAddress(curve.address, { before, limit: 1_000 }),
-      'Pump bonding-curve creation history',
-    )
-    signaturesSeen += signatures.length
-    if (!signatures.length) return null
-    if (signatures.length < 1_000) {
-      // The oldest curve signatures include Pump's Create/CreateV2 transaction.
-      // Check a small oldest-first tail and accept only an actual mint init.
-      for (const entry of signatures.slice(-16).reverse()) {
-        const transaction = await discoveryRpcWithRetry(
-          () => connection.getParsedTransaction(entry.signature, { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }),
-          'Pump creation transaction',
-        )
-        if (isMintInitialization(transaction, mintAddress) && transaction?.blockTime) {
-          const timestamp = transaction.blockTime * 1_000
-          if (process.env.NODE_ENV !== 'production') console.info(`[age] source=pump-curve-onchain pages=${page + 1} signatures=${signaturesSeen} resolved=${Math.round(performance.now() - startedAt)}ms timestamp=${timestamp}`)
-          return timestamp
-        }
-      }
-      return null
-    }
-    before = signatures.at(-1).signature
-  }
-  if (process.env.NODE_ENV !== 'production') console.warn(`[age] pump-curve fast lookup exhausted pages=64 signatures=${signaturesSeen}`)
-  return null
 }
 
 export async function getPumpBondingCurve(connection, mintAddress) {

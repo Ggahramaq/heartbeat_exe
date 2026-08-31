@@ -29,7 +29,9 @@ function finalize(values) {
   return {
     ...values,
     status: holderCount === null ? null : holderCount === 0 ? 'DEAD' : 'ALIVE',
-    ageMs: values.creationTimestamp === null ? null : Math.max(0, Date.now() - values.creationTimestamp),
+    ageMs: Number.isFinite(values.deploymentTimestamp)
+      ? Math.max(0, Date.now() - values.deploymentTimestamp)
+      : null,
     // Product semantics: EARNED TODAY intentionally equals BALANCE.
     todayGlobalFeesSol: lifetime,
     todayFeesSource: lifetime === null ? null : 'balance-equals-earned-today',

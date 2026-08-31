@@ -22,7 +22,9 @@ function completeSnapshot(values) {
     ...values,
     todayGlobalFeesSol: today,
     todayFeesSource,
-    ageMs: values.creationTimestamp === null ? null : Math.max(0, Date.now() - values.creationTimestamp),
+    ageMs: Number.isFinite(values.deploymentTimestamp)
+      ? Math.max(0, Date.now() - values.deploymentTimestamp)
+      : null,
     balanceUsd,
     earnedTodayUsd: balanceUsd,
     fetchedAt: Date.now(),
@@ -70,12 +72,11 @@ async function refreshPart(part) {
     if (partial._pollError) throw new Error(partial._pollError)
     mergePart(partial)
   } catch (error) {
-    // A creation scan that reaches its safety guard cannot become valid on
-    // the next ten-second tick. Back it off long enough to protect the RPC;
-    // transient provider errors retry on the next normal cycle.
+    // Quota failures get a longer backoff; transient provider errors retry on
+    // the next normal cycle. Deployment uptime never depends on this work.
     const delay = /daily request limit|monthly request limit|quota (?:is )?exceeded|usage limit exceeded/i.test(error.message)
       ? 60 * 60_000
-      : /safe creation scan limit/i.test(error.message) ? 5 * 60_000 : POLL_INTERVAL_MS
+      : POLL_INTERVAL_MS
     retryAfter.set(part, Date.now() + delay)
     if (process.env.NODE_ENV !== 'production') console.warn(`[survive-poller:${part}]`, error.message)
   } finally {
@@ -84,9 +85,8 @@ async function refreshPart(part) {
 }
 
 function refresh() {
-  // Each part has its own lock: an initial historical creation scan may run
-  // for a while, but it cannot prevent holders, price, or fee-index progress
-  // from being published every polling cycle.
+  // Each part has its own lock so a slow provider cannot block the other
+  // current-state fields from being published every polling cycle.
   for (const part of PARTS) void refreshPart(part)
 }
 

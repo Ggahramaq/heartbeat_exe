@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 const INITIAL = {
-  mint: null, rawHolderCount: null, holderCount: null, birthTimestamp: null, creationTimestamp: null,
+  mint: null, rawHolderCount: null, holderCount: null, deploymentTimestamp: null,
   lifetimeGlobalFeesSol: null, todayGlobalFeesSol: null, currentSolUsdPrice: null,
 }
 
@@ -34,7 +34,7 @@ export function useSurviveStatus() {
         const response = await fetch('/api/survive-status')
         if (!response.ok) throw new Error(`Status request failed (${response.status})`)
         const snapshot = await response.json()
-        hasUnresolvedFields = snapshot.holderCount === null || snapshot.balanceUsd === null || snapshot.birthTimestamp === null
+        hasUnresolvedFields = snapshot.holderCount === null || snapshot.balanceUsd === null
         if (!cancelled) {
           // The browser consumes a server-owned snapshot. Nulls mean the
           // backend is still resolving that value, not that an earlier value
@@ -57,7 +57,7 @@ export function useSurviveStatus() {
     }
 
     void load()
-    // One immutable birth timestamp drives all uptime displays locally; no
+    // One immutable deployment timestamp drives all uptime displays locally; no
     // extra status request is needed just to advance a clock.
     const ageTimer = window.setInterval(() => setNow(Date.now()), 1_000)
     return () => {
@@ -67,15 +67,15 @@ export function useSurviveStatus() {
   }, [])
 
   return useMemo(() => {
-    const birthTimestamp = Number.isFinite(data.birthTimestamp) ? data.birthTimestamp : data.creationTimestamp
-    const age = Number.isFinite(birthTimestamp) && birthTimestamp <= now ? formatAge(now - birthTimestamp) : 'LOADING...'
+    const deploymentTimestamp = data.deploymentTimestamp
+    const age = Number.isFinite(deploymentTimestamp) && deploymentTimestamp <= now ? formatAge(now - deploymentTimestamp) : 'LOADING...'
     const status = data.holderCount === null ? 'LOADING...' : data.holderCount === 0 ? 'DEAD' : 'ALIVE'
     const balance = Number.isFinite(data.balanceUsd) ? formatUsd(data.balanceUsd) : 'LOADING...'
     // The main-page product rule intentionally displays EARNED TODAY as the
-    // same resolved creator-earnings amount as BALANCE.
+    // same resolved global-fee balance amount as BALANCE.
     const earnedToday = balance
     return {
-      ...data, birthTimestamp, status, age, balance, earnedToday,
+      ...data, deploymentTimestamp, status, age, balance, earnedToday,
       holderDisplay: data.holderCount === null ? 'LOADING...' : data.holderCount.toLocaleString('en-US'),
     }
   }, [data, now])
