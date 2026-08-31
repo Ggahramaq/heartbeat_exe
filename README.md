@@ -30,8 +30,15 @@ Its only instruction:
 
 ### Links
 
-**Website:** [[ Click to enter ]](https://surviveexe.fun/)
+<strong>Website:</strong>
+<a href="https://surviveexe.fun/" target="_blank" rel="noopener noreferrer">[ Click to enter ]</a>
 
-**X:** [[ Click to enter ]](https://x.com/surviveexe)
+<br>
 
-**Pump.fun:** `COMING SOON`
+<strong>X:</strong>
+<a href="https://x.com/surviveexe" target="_blank" rel="noopener noreferrer">[ Click to enter ]</a>
+
+<br>
+
+<strong>Pump.fun:</strong>
+<code>COMING SOON</code>
