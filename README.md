@@ -30,7 +30,7 @@ Its only instruction:
 
 ### Links
 
-**Website:** [[ Click to enter ]](https://surviveexe.fun/)
+**Website:** [[ Click to enter ]](https://www.surviveexe.fun/)
 
 **X:** [[ Click to enter ]](https://x.com/surviveexe)
 
