@@ -32,7 +32,7 @@ Its only instruction:
 
 ### Links
 
-**Website:** [[ Click to enter ]](https://www.surviveexe.fun/)
+**Website:** [[ Click to enter ]](https://www.heartbeatexe.fun/)
 
 **X:** [[ Click to enter ]](https://x.com/h3artbeatexe)
 
