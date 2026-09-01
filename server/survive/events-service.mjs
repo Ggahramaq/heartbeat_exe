@@ -81,7 +81,7 @@ async function readRecentEvents(config) {
  * instances reuse this short cache, while CDN response caching shares it
  * across visitors. Correctness never depends on either cache surviving.
  */
-export async function getRecentSurviveEvents() {
+export async function getRecentHeartbeatEvents() {
   const config = getConfig()
   if (!config.mint) return []
   return cached(`recent-events:${config.mint}`, EVENT_CACHE_TTL_MS, () => readRecentEvents(config))

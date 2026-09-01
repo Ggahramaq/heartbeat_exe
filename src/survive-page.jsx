@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BootSection, InstantBootSection } from './boot-section.jsx'
 import { AnimatedEventRows } from './event-log-rows.jsx'
 import { useEventLog } from './use-event-log.js'
-import { useSurviveStatus } from './use-survive-status.js'
-import { clamp, getSurviveHeartbeat, MAX_HEARTBEAT_BPM } from './heartbeat-state.js'
+import { useHeartbeatStatus } from './use-heartbeat-status.js'
+import { clamp, getHeartbeat, MAX_HEARTBEAT_BPM } from './heartbeat-state.js'
 import xLogo from './svg/x.svg'
 import pumpFunLogo from './svg/pump-fun.svg'
 import githubLogo from './svg/github.svg'
@@ -25,7 +25,7 @@ function WindowBar({ isActive, startNext, shutdownKey, startShutdownNext, advanc
   return (
     <header className="window-bar">
       <BootSection active={isActive('topAppLabel')} onFirstOff={startNext} shuttingDown={shutdownKey === 'topAppLabel'} onShutdownOff={startShutdownNext} onShutdownComplete={() => completeShutdown('topAppLabel')} className="window-title">
-        <div><strong>SURVIVE.EXE</strong><span>v0.1.0</span></div>
+        <div><strong>HEARTBEAT.EXE</strong><span>v0.1.0</span></div>
       </BootSection>
       <div className="window-controls" aria-label="Window controls">
         <InstantBootSection active={isActive('minimizeControl')} onActivated={startNext} shuttingDown={shutdownKey === 'minimizeControl'} onShutdown={() => advanceInstantShutdown('minimizeControl')} className="window-control-boot"><i>−</i></InstantBootSection>
@@ -145,7 +145,7 @@ function AliveEcgTrace({ amplitudeScale, pixelsPerSecond }) {
 function HeartbeatMonitor({ holderCount, balanceUsd }) {
   // Keep the familiar alive display while holder data is initially resolving;
   // only a confirmed zero-holder state stops the monitor.
-  const target = getSurviveHeartbeat(holderCount, balanceUsd)
+  const target = getHeartbeat(holderCount, balanceUsd)
   const isAlive = target.isAlive
   const bpm = target.bpm
   const maxHeartbeatMode = isAlive && bpm === MAX_HEARTBEAT_BPM
@@ -179,10 +179,10 @@ function HeroSystem({ liveStatus }) {
     ['EARNED TODAY', liveStatus.earnedToday], ['ESTIMATED UPTIME', liveStatus.age],
   ]
   const offline = liveStatus.status === 'DEAD'
-  return <section className="hero-system" aria-label="Survival system">
+  return <section className="hero-system" aria-label="Heartbeat system">
     <div className="hero-top">
       <div>
-        <h1>SURVIVE.EXE</h1>
+        <h1>HEARTBEAT.EXE</h1>
         <p className="online"><b>{offline ? '○' : '●'}</b> AGENT {offline ? 'OFFLINE' : 'ONLINE'}</p>
       </div>
       <HeartbeatMonitor holderCount={liveStatus.holderCount} balanceUsd={liveStatus.balanceUsd} />
@@ -241,9 +241,9 @@ function SocialLinkCell({ href, label, icon, platform }) {
 function SocialLinksPanel({ mint }) {
   const pumpFunUrl = mint ? `https://pump.fun/coin/${encodeURIComponent(mint)}` : null
   return <section className="module social-links-panel"><div className="social-links-body">
-    <SocialLinkCell href="https://x.com/surviveexe" label="Open SURVIVE.EXE on X" icon={xLogo} platform="x" />
-    <SocialLinkCell href={pumpFunUrl} label="Open SURVIVE.EXE on Pump.fun" icon={pumpFunLogo} platform="pumpfun" />
-    <SocialLinkCell href="https://github.com/Ggahramaq/survive_exe" label="Open SURVIVE.EXE GitHub" icon={githubLogo} platform="github" />
+    <SocialLinkCell href="https://x.com/h3artbeatexe" label="Open HEARTBEAT.EXE on X" icon={xLogo} platform="x" />
+    <SocialLinkCell href={pumpFunUrl} label="Open HEARTBEAT.EXE on Pump.fun" icon={pumpFunLogo} platform="pumpfun" />
+    <SocialLinkCell href="https://github.com/Ggahramaq/heartbeat_exe" label="Open HEARTBEAT.EXE GitHub" icon={githubLogo} platform="github" />
   </div></section>
 }
 
@@ -259,7 +259,7 @@ function Terminal({ onOpen, enabled }) {
     className="terminal"
     onClick={onOpen}
     disabled={!enabled}
-    aria-label="Open SURVIVE.EXE terminal"
+    aria-label="Open HEARTBEAT.EXE terminal"
   >
     <span>&gt; TERMINAL READY - [ CLICK TO ENTER ]</span><i className="cursor" />
   </button>
@@ -303,7 +303,7 @@ function StatusBar({ isActive, startNext, liveStatus, shutdownKey, startShutdown
   const log = liveStatus.holderCount === null ? 'LOG: LOADING...' : `LOG: ${live ? 'LIVE' : 'INACTIVE'}`
   const items = [
     ['uptimeStatus', `UPTIME: ${formatFooterUptime(liveStatus.deploymentTimestamp, now)}`, 'status-uptime'],
-    ['modelStatus', 'MODEL: SURVIVE-0.1', 'status-model'],
+    ['modelStatus', 'MODEL: HEARTBEAT-0.1', 'status-model'],
     ['environmentStatus', 'ENVIRONMENT: MAINNET', 'status-environment'],
     ['timeStatus', `TIME: ${formatEasternTime(now)}`, 'status-time'],
     ['logStatus', log, 'status-log'],
@@ -323,7 +323,7 @@ const sectionKeys = [
   'uptimeStatus', 'modelStatus', 'environmentStatus', 'timeStatus', 'logStatus',
 ]
 
-export function SurvivePage() {
+export function HeartbeatPage() {
   const order = useMemo(() => shuffle(sectionKeys), [])
   const [frameActive, setFrameActive] = useState(false)
   const [internalsLive, setInternalsLive] = useState(false)
@@ -332,7 +332,7 @@ export function SurvivePage() {
   const [frameShuttingDown, setFrameShuttingDown] = useState(false)
   const [shutdownDestination, setShutdownDestination] = useState(null)
   const started = useRef(false)
-  const liveStatus = useSurviveStatus()
+  const liveStatus = useHeartbeatStatus()
   const eventLog = useEventLog()
 
   useEffect(() => {

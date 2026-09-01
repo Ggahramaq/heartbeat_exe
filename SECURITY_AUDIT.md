@@ -1,4 +1,4 @@
-# SURVIVE.EXE Pre-GitHub Security Audit
+# HEARTBEAT.EXE Pre-GitHub Security Audit
 
 **Audit date:** 2026-08-31  
 **Scope:** full application source, server routes, build output, local configuration hygiene, dependency advisories, persistence, Event Log streaming, chat, and the terminal UI.  
@@ -105,7 +105,7 @@ The terminal UI was specifically reviewed because a terminal-looking interface m
 
 | Endpoint/service | Input and exposure | Controls |
 | --- | --- | --- |
-| `GET /api/survive-status` | Public, read-only snapshot | No provider key/configuration is returned; `Cache-Control: no-store`. |
+| `GET /api/heartbeat-status` | Public, read-only snapshot | No provider key/configuration is returned; `Cache-Control: no-store`. The legacy `/api/survive-status` alias remains temporarily. |
 | `GET /api/event-log` | Public, read-only five-row snapshot | Server-owned normalized event data only. |
 | `GET /api/event-log/stream` | Public SSE | Server-owned source, keepalive cleanup, 3 streams/client, 200 global streams. |
 | `POST /api/chat` | JSON body, public | 16 KB parser cap, same-origin check, role normalization, length/history caps, scope gate, rate limit, one active generation, timeout, server-only API key. |
@@ -119,7 +119,7 @@ No CORS middleware or wildcard `Access-Control-Allow-Origin` header is configure
 - `node --check` passed for the changed server modules.
 - `npm run build` passed after all changes.
 - Production smoke test on a temporary local port returned:
-  - `GET /api/survive-status` → HTTP 200
+  - `GET /api/heartbeat-status` → HTTP 200
   - `X-Content-Type-Options: nosniff`
   - `X-Frame-Options: DENY`
   - Content-Security-Policy present

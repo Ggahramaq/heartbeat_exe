@@ -1,4 +1,4 @@
-import { getSurviveStatusPart, getSurviveStatusPlaceholder } from './status.mjs'
+import { getHeartbeatStatusPart, getHeartbeatStatusPlaceholder } from './status.mjs'
 
 const POLL_INTERVAL_MS = 10_000
 const PARTS = ['core', 'holders', 'fees', 'price']
@@ -32,11 +32,11 @@ function completeSnapshot(values) {
 }
 
 function mergePart(partial) {
-  const current = snapshot ?? getSurviveStatusPlaceholder()
+  const current = snapshot ?? getHeartbeatStatusPlaceholder()
   // Changing the configured mint is a new machine. Never mix values indexed
   // for the previous mint into the new mint's snapshot.
   const target = partial.mint && partial.mint !== current.mint
-    ? getSurviveStatusPlaceholder()
+    ? getHeartbeatStatusPlaceholder()
     : current
   const resolved = Object.fromEntries(
     Object.entries(partial).filter(([key, value]) => value !== null || key === 'mint' || key === 'fetchedAt'),
@@ -68,7 +68,7 @@ async function refreshPart(part) {
   if ((retryAfter.get(part) ?? 0) > Date.now()) return
   inFlight.add(part)
   try {
-    const partial = await getSurviveStatusPart(part)
+    const partial = await getHeartbeatStatusPart(part)
     if (partial._pollError) throw new Error(partial._pollError)
     mergePart(partial)
   } catch (error) {
@@ -78,7 +78,7 @@ async function refreshPart(part) {
       ? 60 * 60_000
       : POLL_INTERVAL_MS
     retryAfter.set(part, Date.now() + delay)
-    if (process.env.NODE_ENV !== 'production') console.warn(`[survive-poller:${part}]`, error.message)
+    if (process.env.NODE_ENV !== 'production') console.warn(`[heartbeat-poller:${part}]`, error.message)
   } finally {
     inFlight.delete(part)
   }
@@ -90,18 +90,18 @@ function refresh() {
   for (const part of PARTS) void refreshPart(part)
 }
 
-export function startSurviveStatusPoller() {
+export function startHeartbeatStatusPoller() {
   if (timer) return
-  snapshot = getSurviveStatusPlaceholder()
+  snapshot = getHeartbeatStatusPlaceholder()
   refresh()
   timer = setInterval(refresh, POLL_INTERVAL_MS)
 }
 
-export function getSurviveStatusSnapshot() {
-  return completeSnapshot(snapshot ?? getSurviveStatusPlaceholder())
+export function getHeartbeatStatusSnapshot() {
+  return completeSnapshot(snapshot ?? getHeartbeatStatusPlaceholder())
 }
 
-export function stopSurviveStatusPoller() {
+export function stopHeartbeatStatusPoller() {
   if (timer) clearInterval(timer)
   timer = null
 }

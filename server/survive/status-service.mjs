@@ -1,4 +1,4 @@
-import { getSurviveStatusPart, getSurviveStatusPlaceholder } from './status.mjs'
+import { getHeartbeatStatusPart, getHeartbeatStatusPlaceholder } from './status.mjs'
 
 const STATUS_PART_TIMEOUT_MS = 1_750
 const STATUS_PARTS = ['core', 'holders', 'fees', 'price']
@@ -46,9 +46,9 @@ function finalize(values) {
  * present in the base response immediately and slow independent providers are
  * bounded so one timeout never blocks the rest of the public snapshot.
  */
-export async function resolveSurviveStatusForRequest() {
-  const initial = getSurviveStatusPlaceholder()
-  const results = await Promise.allSettled(STATUS_PARTS.map(async (part) => withTimeout(getSurviveStatusPart(part), part)))
+export async function resolveHeartbeatStatusForRequest() {
+  const initial = getHeartbeatStatusPlaceholder()
+  const results = await Promise.allSettled(STATUS_PARTS.map(async (part) => withTimeout(getHeartbeatStatusPart(part), part)))
   const values = { ...initial }
   for (const result of results) {
     if (result.status === 'fulfilled') mergeResolved(values, result.value)

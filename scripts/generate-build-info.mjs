@@ -7,6 +7,6 @@ const timestamp = Date.now()
 await mkdir(dirname(output), { recursive: true })
 await writeFile(output, [
   '// Generated once by scripts/generate-build-info.mjs. Do not edit manually.',
-  `export const SURVIVE_DEPLOYED_AT = ${timestamp}`,
+  `export const HEARTBEAT_DEPLOYED_AT = ${timestamp}`,
   '',
 ].join('\n'))

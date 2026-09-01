@@ -8,7 +8,9 @@ export default function handler(request, response) {
 
   const env = getEnvironmentAvailability()
   return response.status(200).json({
-    ok: Object.values(env).every(Boolean),
+    // SURVIVE_TOKEN_CA is reported only as a legacy diagnostic and is not a
+    // requirement once HEARTBEAT_TOKEN_CA has been configured.
+    ok: Object.entries(env).every(([name, available]) => name === 'SURVIVE_TOKEN_CA' || available),
     env,
   })
 }

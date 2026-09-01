@@ -1,5 +1,6 @@
 {
-  "name": "survive-exe",
+  "name": "heartbeat-exe",
+  "description": "A living digital entity on Solana.",
   "version": "0.1.0",
   "private": true,
   "type": "module",

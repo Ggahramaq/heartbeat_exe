@@ -1,5 +1,5 @@
 const REQUIRED_ENVIRONMENT_VARIABLES = [
-  'SURVIVE_TOKEN_CA',
+  'HEARTBEAT_TOKEN_CA',
   'SOLANA_RPC_URL',
   'SOLANA_WSS_URL',
   'BIRDEYE_API_KEY',
@@ -13,7 +13,10 @@ const REQUIRED_ENVIRONMENT_VARIABLES = [
  * server-only.
  */
 export function getEnvironmentAvailability() {
-  return Object.fromEntries(
-    REQUIRED_ENVIRONMENT_VARIABLES.map((name) => [name, Boolean(process.env[name]?.trim())]),
-  )
+  const env = Object.fromEntries(REQUIRED_ENVIRONMENT_VARIABLES.map((name) => [name, Boolean(process.env[name]?.trim())]))
+  // Existing deployments can use the former token variable until manually
+  // migrated. The canonical readiness field treats either value as configured.
+  env.HEARTBEAT_TOKEN_CA = Boolean(process.env.HEARTBEAT_TOKEN_CA?.trim() || process.env.SURVIVE_TOKEN_CA?.trim())
+  env.SURVIVE_TOKEN_CA = Boolean(process.env.SURVIVE_TOKEN_CA?.trim())
+  return env
 }

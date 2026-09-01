@@ -1,8 +1,8 @@
 import express from 'express'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { getSurviveEventLogSnapshot, startSurviveEventLog, subscribeToSurviveEventLog } from './survive/event-log.mjs'
-import { getSurviveStatusSnapshot, startSurviveStatusPoller } from './survive/status-poller.mjs'
+import { getHeartbeatEventLogSnapshot, startHeartbeatEventLog, subscribeToHeartbeatEventLog } from './survive/event-log.mjs'
+import { getHeartbeatStatusSnapshot, startHeartbeatStatusPoller } from './survive/status-poller.mjs'
 import { handleTalkChat } from './survive/chat.mjs'
 import { getEnvironmentAvailability } from './survive/env-check.mjs'
 
@@ -72,13 +72,17 @@ function requireSameOrigin(request, response, next) {
 // One server-owned status poller refreshes the published state every ten
 // seconds. API consumers
 // receive this snapshot only; visitor count therefore does not amplify RPC use.
-startSurviveStatusPoller()
-startSurviveEventLog()
+startHeartbeatStatusPoller()
+startHeartbeatEventLog()
 
-app.get('/api/survive-status', (_request, response) => {
+function sendHeartbeatStatus(_request, response) {
   response.set('Cache-Control', 'no-store')
-  response.json(getSurviveStatusSnapshot())
-})
+  response.json(getHeartbeatStatusSnapshot())
+}
+
+app.get('/api/heartbeat-status', sendHeartbeatStatus)
+// Legacy migration alias for integrations that have not switched endpoints.
+app.get('/api/survive-status', sendHeartbeatStatus)
 
 // Matches the Vercel diagnostic without ever returning configuration values.
 app.get('/api/env-check', (_request, response) => {
@@ -91,14 +95,14 @@ app.post('/api/chat', requireSameOrigin, (request, response) => { void handleTal
 
 app.get('/api/event-log', (_request, response) => {
   response.set('Cache-Control', 'no-store')
-  response.json(getSurviveEventLogSnapshot())
+  response.json(getHeartbeatEventLogSnapshot())
 })
 
 // The Vercel path uses the same small JSON contract through /api/events. In
 // local development this reads the existing shared WebSocket buffer instead.
 app.get('/api/events', (_request, response) => {
   response.set('Cache-Control', 'no-store')
-  response.json({ ...getSurviveEventLogSnapshot(), streaming: true })
+  response.json({ ...getHeartbeatEventLogSnapshot(), streaming: true })
 })
 
 app.get('/api/event-log/stream', (request, response) => {
@@ -126,7 +130,7 @@ app.get('/api/event-log/stream', (request, response) => {
     'X-Accel-Buffering': 'no',
   })
   response.flushHeaders()
-  const unsubscribe = subscribeToSurviveEventLog((payload) => {
+  const unsubscribe = subscribeToHeartbeatEventLog((payload) => {
     response.write(`data: ${JSON.stringify(payload)}\n\n`)
   })
   const heartbeat = setInterval(() => response.write(': keepalive\n\n'), 25_000)
@@ -147,4 +151,4 @@ if (production) {
   app.use(vite.middlewares)
 }
 
-app.listen(port, () => console.log(`SURVIVE.EXE listening on http://127.0.0.1:${port}`))
+app.listen(port, () => console.log(`HEARTBEAT.EXE listening on http://127.0.0.1:${port}`))

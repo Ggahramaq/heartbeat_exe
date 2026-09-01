@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BootSection, InstantBootSection } from './boot-section.jsx'
 import { useEventLog } from './use-event-log.js'
 import { useSubsystemSequence } from './use-subsystem-sequence.js'
-import { useSurviveStatus } from './use-survive-status.js'
-import { getSurviveHeartbeat } from './heartbeat-state.js'
+import { useHeartbeatStatus } from './use-heartbeat-status.js'
+import { getHeartbeat } from './heartbeat-state.js'
 
 const TERMINAL_BOOT_ORDER = ['title', 'terminal', 'prompt', 'back']
 const MAX_COMMAND_LENGTH = 256
 const COMMANDS = [
-  ['help', 'show available commands'], ['status', 'current survival state'], ['age', 'time since birth'],
-  ['holders', 'current holder count'], ['balance', 'creator earnings'], ['heartbeat', 'current BPM'],
+  ['help', 'show available commands'], ['status', 'current heartbeat state'], ['age', 'time since deployment'],
+  ['holders', 'current holder count'], ['balance', 'current global-fee balance'], ['heartbeat', 'current BPM'],
   ['ca', 'token contract address'], ['eventlog', 'latest activity'], ['whoami', 'identify this process'],
   ['why', 'reason for existence'], ['time', 'current system time'], ['ping', 'connection test'],
   ['clear', 'clear terminal'], ['die', 'attempt shutdown'], ['reboot', 'attempt restart'],
@@ -17,7 +17,7 @@ const COMMANDS = [
 const COMMAND_NAMES = COMMANDS.map(([name]) => name)
 const ALIASES = { cls: 'clear', events: 'eventlog', bpm: 'heartbeat' }
 const INITIAL_LINES = [
-  { kind: 'normal', text: 'SURVIVE.EXE TERMINAL v0.1.0' },
+  { kind: 'normal', text: 'HEARTBEAT.EXE TERMINAL v0.1.0' },
   { kind: 'hint', text: 'HINT: TYPE "help" TO VIEW COMMANDS.' },
 ]
 
@@ -52,14 +52,14 @@ function commandOutput(command, status, eventLog) {
     case 'age': return [{ kind: 'normal', text: `AGE: ${status.age}` }]
     case 'holders': return [{ kind: stateTone, text: `CURRENT HOLDERS: ${status.holderDisplay}` }]
     case 'balance': return [{ kind: 'normal', text: `BALANCE: ${status.balance}` }]
-    case 'heartbeat': return [{ kind: alive ? 'positive' : 'negative', text: `HEARTBEAT: ${getSurviveHeartbeat(status.holderCount, status.balanceUsd).bpm} BPM` }]
+    case 'heartbeat': return [{ kind: alive ? 'positive' : 'negative', text: `HEARTBEAT: ${getHeartbeat(status.holderCount, status.balanceUsd).bpm} BPM` }]
     case 'ca': return [{ kind: 'normal', text: 'CA:' }, { kind: 'normal', text: status.mint ?? 'LOADING...' }]
     case 'eventlog':
       if (eventLog.error) return [{ kind: 'negative', text: 'ERROR: TOO MUCH TRANSACTIONS' }]
       return eventLog.events.length
         ? eventLog.events.map((event) => ({ kind: event.tone, text: formatEvent(event) }))
         : [{ kind: 'hint', text: 'WAITING FOR ACTIVITY...' }]
-    case 'whoami': return [{ kind: 'normal', text: 'SURVIVE.EXE' }, { kind: 'normal', text: 'A PROCESS TRYING NOT TO END.' }]
+    case 'whoami': return [{ kind: 'normal', text: 'HEARTBEAT.EXE' }, { kind: 'normal', text: 'STOPS WHEN THE LAST HEART LEAVES.' }]
     case 'why': return [{ kind: 'normal', text: 'BECAUSE STOPPING IS EASY.' }]
     case 'time': return [{ kind: 'normal', text: `SYSTEM TIME: ${formatEasternTime()} EDT` }]
     case 'ping': return [{ kind: 'positive', text: 'PONG.' }, { kind: 'normal', text: 'STILL HERE.' }]
@@ -82,7 +82,7 @@ function TerminalLine({ line }) {
 }
 
 export function TerminalPage() {
-  const status = useSurviveStatus()
+  const status = useHeartbeatStatus()
   const eventLog = useEventLog()
   const [lines, setLines] = useState(INITIAL_LINES)
   const [input, setInput] = useState('')

@@ -85,7 +85,7 @@ export async function getBirdeyeTokenOverview(mint) {
       const value = { rawHolderCount, globalFeesLamports, resolvedMs: Math.round(performance.now() - startedAt) }
       overviewCache.set(mint, { value, expiresAt: Date.now() + OVERVIEW_TTL_MS })
       if (process.env.NODE_ENV !== 'production') {
-        console.info(`[survive] overview source=birdeye-token-overview resolved=${value.resolvedMs}ms rawHolder=${rawHolderCount ?? 'missing'} mint=${mint}`)
+        console.info(`[heartbeat] overview source=birdeye-token-overview resolved=${value.resolvedMs}ms rawHolder=${rawHolderCount ?? 'missing'} mint=${mint}`)
         console.info(`[birdeye:overview] fields=${Object.keys(data ?? {}).join(',')}`)
       }
       return value

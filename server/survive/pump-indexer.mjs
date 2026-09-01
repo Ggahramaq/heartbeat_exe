@@ -514,7 +514,7 @@ export async function getIndexedPumpGlobalFeeStats(connection, mintAddress, heli
         if (feeIndex.phase === 'ready') continueWork = !(await indexNewHistory(connection, mintAddress, historyAddress, latest, feeIndex, pool, perf))
         else continueWork = !(await indexInitialHistory(connection, mintAddress, historyAddress, latest, feeIndex, pool, perf))
       } catch (error) {
-        if (process.env.NODE_ENV !== 'production') console.warn('[survive-global-fee-index]', error.message)
+        if (process.env.NODE_ENV !== 'production') console.warn('[heartbeat-global-fee-index]', error.message)
         if (/daily request limit|monthly request limit|quota (?:is )?exceeded|usage limit exceeded/i.test(error?.message ?? '')) {
           retryAfterByMint.set(mintAddress, Date.now() + HARD_QUOTA_COOLDOWN_MS)
           continueWork = false

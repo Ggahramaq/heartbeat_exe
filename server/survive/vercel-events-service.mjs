@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 2_000
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const cache = new Map()
 
-function configuredMint() { return process.env.SURVIVE_TOKEN_CA?.trim() || null }
+function configuredMint() { return process.env.HEARTBEAT_TOKEN_CA?.trim() || process.env.SURVIVE_TOKEN_CA?.trim() || null }
 
 function configuredRpcUrl() {
   const value = process.env.SOLANA_RPC_URL?.trim()
@@ -59,7 +59,7 @@ async function rpc(url, method, params) {
   try {
     const providerResponse = await fetch(url, {
       method: 'POST', headers: { 'content-type': 'application/json' }, signal: controller.signal,
-      body: JSON.stringify({ jsonrpc: '2.0', id: `survive-events-${Date.now()}`, method, params }),
+      body: JSON.stringify({ jsonrpc: '2.0', id: `heartbeat-events-${Date.now()}`, method, params }),
     })
     const payload = await providerResponse.json().catch(() => null)
     if (!providerResponse.ok || payload?.error) throw new Error(payload?.error?.message ?? `Solana RPC returned ${providerResponse.status}`)

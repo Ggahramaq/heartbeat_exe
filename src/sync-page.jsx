@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BootSection, InstantBootSection } from './boot-section.jsx'
-import { getSurviveHeartbeat, MAX_HEARTBEAT_BPM } from './heartbeat-state.js'
+import { getHeartbeat, MAX_HEARTBEAT_BPM } from './heartbeat-state.js'
 import { useSubsystemSequence } from './use-subsystem-sequence.js'
-import { useSurviveStatus } from './use-survive-status.js'
+import { useHeartbeatStatus } from './use-heartbeat-status.js'
 
 const SYNC_BOOT_ORDER = ['title', 'myHeart', 'yourHeart', 'comparison', 'tap', 'result', 'back']
 const INACTIVITY_MS = 2_800
@@ -44,7 +44,7 @@ function SyncWave({ kind, bpm, taps = [], now = performance.now() }) {
   const userPath = userPulsePath(taps, now)
   const speedProgress = Math.min(Math.max((bpm - 60) / (MAX_HEARTBEAT_BPM - 60), 0), 1)
   const scanDuration = 4 - speedProgress * 3.38
-  return <svg className={`sync-wave ${dead ? 'is-dead' : ''} ${isMax ? 'is-max' : ''}`} style={kind === 'mine' ? { '--sync-wave-duration': `${scanDuration}s` } : undefined} viewBox="0 0 300 76" role="img" aria-label={kind === 'mine' ? `SURVIVE heartbeat ${bpm} BPM` : 'Your tap heartbeat'}>
+  return <svg className={`sync-wave ${dead ? 'is-dead' : ''} ${isMax ? 'is-max' : ''}`} style={kind === 'mine' ? { '--sync-wave-duration': `${scanDuration}s` } : undefined} viewBox="0 0 300 76" role="img" aria-label={kind === 'mine' ? `HEARTBEAT.EXE heartbeat ${bpm} BPM` : 'Your tap heartbeat'}>
     {isMax && <defs><linearGradient id="sync-heart-rainbow" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="0">
       <stop offset="0%" stopColor="#ff0000" /><stop offset="16%" stopColor="#ff9900" /><stop offset="32%" stopColor="#ffff00" />
       <stop offset="48%" stopColor="#33ff00" /><stop offset="64%" stopColor="#00ccff" /><stop offset="80%" stopColor="#6633ff" />
@@ -77,8 +77,8 @@ function syncPhrase({ bpm, sync }) {
 }
 
 export function SyncPage() {
-  const status = useSurviveStatus()
-  const target = getSurviveHeartbeat(status.holderCount, status.balanceUsd)
+  const status = useHeartbeatStatus()
+  const target = getHeartbeat(status.holderCount, status.balanceUsd)
   const [tapTimes, setTapTimes] = useState([])
   const [userBpm, setUserBpm] = useState(null)
   const [bestSync, setBestSync] = useState(null)

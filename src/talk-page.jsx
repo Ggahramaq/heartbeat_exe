@@ -18,7 +18,7 @@ function TalkWindowBar({ sequence, shuttingDown }) {
 }
 
 function ChatLine({ message }) {
-  return <div className={`talk-line talk-${message.sender}`}><b>{message.sender === 'user' ? 'YOU' : 'SURVIVE'}:</b><span>{message.text}</span></div>
+  return <div className={`talk-line talk-${message.sender}`}><b>{message.sender === 'user' ? 'YOU' : 'HEARTBEAT'}:</b><span>{message.text}</span></div>
 }
 
 export function TalkPage() {
@@ -55,9 +55,9 @@ export function TalkPage() {
       <div className={`machine-contents talk-machine-contents ${sequence.internalsLive ? 'internals-live' : ''}`}>
         <TalkWindowBar sequence={sequence} shuttingDown={shuttingDown} />
         <BootSection active={sequence.isActive('chat')} onFirstOff={sequence.startNext} shuttingDown={sequence.shutdownKey === 'chat'} onShutdownOff={sequence.startShutdownNext} onShutdownComplete={() => sequence.completeShutdown('chat')} className="talk-chat-boot">
-          <section className="talk-chat-module" aria-label="Talk to SURVIVE.EXE"><div className="panel-header"><span>TALK TO ME</span><span className="stripes" /></div><div className="talk-feed" ref={feedRef} aria-live="polite">
+          <section className="talk-chat-module" aria-label="Talk to HEARTBEAT.EXE"><div className="panel-header"><span>TALK TO ME</span><span className="stripes" /></div><div className="talk-feed" ref={feedRef} aria-live="polite">
             {messages.map((message, index) => <ChatLine message={message} key={`${message.sender}-${index}-${message.text}`} />)}
-            {thinking && <div className="talk-line talk-assistant"><b>SURVIVE:</b><span>PROCESSING... <i className="cursor" /></span></div>}
+            {thinking && <div className="talk-line talk-assistant"><b>HEARTBEAT:</b><span>PROCESSING... <i className="cursor" /></span></div>}
           </div></section>
         </BootSection>
         <BootSection active={sequence.isActive('input')} onFirstOff={sequence.startNext} shuttingDown={sequence.shutdownKey === 'input'} onShutdownOff={sequence.startShutdownNext} onShutdownComplete={() => sequence.completeShutdown('input')} className="talk-input-boot">

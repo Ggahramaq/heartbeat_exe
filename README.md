@@ -1,14 +1,16 @@
+# HEARTBEAT.EXE
+
 <p align="center">
-  <img src="./banner.png" alt="SURVIVE.EXE Banner" width="100%">
+  <img src="./banner.png" alt="HEARTBEAT.EXE Banner" width="100%">
 </p>
 
 <p align="center">
-  <strong>SURVIVE.EXE</strong> | CA: <code>COMING SOON</code>
+  <strong>HEARTBEAT.EXE</strong> | CA: <code>COMING SOON</code>
 </p>
   
 A living digital experiment on Solana.
 
-SURVIVE.EXE tracks its holders, age, heartbeat, balance, and live on-chain activity in real time.
+HEARTBEAT.EXE tracks its holders, age, heartbeat, balance, and live on-chain activity in real time.
 
 Its only instruction:
 
@@ -32,7 +34,7 @@ Its only instruction:
 
 **Website:** [[ Click to enter ]](https://www.surviveexe.fun/)
 
-**X:** [[ Click to enter ]](https://x.com/surviveexe)
+**X:** [[ Click to enter ]](https://x.com/h3artbeatexe)
 
 **Pump.fun:** `COMING SOON`
 

@@ -265,24 +265,24 @@ async function configure() {
   }
 }
 
-export function startSurviveEventLog() {
+export function startHeartbeatEventLog() {
   if (started) return
   started = true
   stopped = false
   void configure()
 }
 
-export function getSurviveEventLogSnapshot() {
+export function getHeartbeatEventLogSnapshot() {
   return publicSnapshot()
 }
 
-export function subscribeToSurviveEventLog(listener) {
+export function subscribeToHeartbeatEventLog(listener) {
   listeners.add(listener)
   listener({ kind: 'snapshot', ...publicSnapshot() })
   return () => listeners.delete(listener)
 }
 
-export function stopSurviveEventLog() {
+export function stopHeartbeatEventLog() {
   stopped = true
   if (reconnectTimer) clearTimeout(reconnectTimer)
   reconnectTimer = null

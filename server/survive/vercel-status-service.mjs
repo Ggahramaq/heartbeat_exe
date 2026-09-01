@@ -1,4 +1,4 @@
-import { SURVIVE_DEPLOYED_AT } from './generated-build-info.mjs'
+import { HEARTBEAT_DEPLOYED_AT } from './generated-build-info.mjs'
 
 const BIRDEYE_TOKEN_OVERVIEW_URL = 'https://public-api.birdeye.so/defi/token_overview'
 const BIRDEYE_PRICE_URL = 'https://public-api.birdeye.so/defi/price'
@@ -7,7 +7,7 @@ const REQUEST_TIMEOUT_MS = 1_600
 const CACHE_TTL_MS = 9_000
 const cache = new Map()
 
-function publicMint() { return process.env.SURVIVE_TOKEN_CA?.trim() || null }
+function publicMint() { return process.env.HEARTBEAT_TOKEN_CA?.trim() || process.env.SURVIVE_TOKEN_CA?.trim() || null }
 
 function emptyStatus(mint) {
   return {
@@ -17,8 +17,8 @@ function emptyStatus(mint) {
     rawHolderCount: null,
     holderCount: null,
     // Deployment time is the one explicit source of truth for all uptime UI.
-    deploymentTimestamp: SURVIVE_DEPLOYED_AT,
-    ageMs: Math.max(0, Date.now() - SURVIVE_DEPLOYED_AT),
+    deploymentTimestamp: HEARTBEAT_DEPLOYED_AT,
+    ageMs: Math.max(0, Date.now() - HEARTBEAT_DEPLOYED_AT),
     ageSource: 'build',
     birthSource: 'build',
     lifetimeGlobalFeesSol: null,
@@ -84,26 +84,26 @@ async function resolveSolUsdPrice() {
 }
 
 function reportPartFailure(part, error) {
-  console.error('[survive-status:provider]', {
+  console.error('[heartbeat-status:provider]', {
     part, name: error?.name, message: error?.message, stack: error?.stack,
   })
 }
 
 /** Vercel-safe request resolver; no token-birth provider or RPC work occurs. */
-export async function resolveVercelSurviveStatus() {
+export async function resolveVercelHeartbeatStatus() {
   const mint = publicMint()
   const result = emptyStatus(mint)
-  console.log('[survive-status] start')
-  console.log('[survive-status] env', {
+  console.log('[heartbeat-status] start')
+  console.log('[heartbeat-status] env', {
     hasCA: Boolean(mint),
     hasBirdeye: Boolean(process.env.BIRDEYE_API_KEY?.trim()),
     hasRpc: Boolean(process.env.SOLANA_RPC_URL?.trim()),
   })
-  console.log(`[age] source=build deploymentTimestamp=${SURVIVE_DEPLOYED_AT}`)
+  console.log(`[age] source=build deploymentTimestamp=${HEARTBEAT_DEPLOYED_AT}`)
   if (!mint) return result
 
-  console.log('[survive-status] resolving birdeye')
-  console.log('[survive-status] resolving holders')
+  console.log('[heartbeat-status] resolving birdeye')
+  console.log('[heartbeat-status] resolving holders')
   const [overviewResult, priceResult] = await Promise.allSettled([
     resolveOverview(mint),
     resolveSolUsdPrice(),
@@ -136,10 +136,10 @@ export async function resolveVercelSurviveStatus() {
     result.earnedTodayUsd = result.balanceUsd
   }
   result.fetchedAt = Date.now()
-  result.ageMs = Math.max(0, result.fetchedAt - SURVIVE_DEPLOYED_AT)
+  result.ageMs = Math.max(0, result.fetchedAt - HEARTBEAT_DEPLOYED_AT)
   return result
 }
 
-export function getVercelStatusPlaceholder() {
+export function getVercelHeartbeatStatusPlaceholder() {
   return emptyStatus(publicMint())
 }

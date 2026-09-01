@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource/fusion-pixel-12px-monospaced-sc'
 import './styles.css'
-import { SurvivePage } from './survive-page.jsx'
+import { HeartbeatPage } from './survive-page.jsx'
 import { TalkPage } from './talk-page.jsx'
 import { TerminalPage } from './terminal-page.jsx'
 import { WalletPage } from './wallet-page.jsx'
@@ -19,7 +19,7 @@ function AppRouter() {
   if (path === '/terminal' || path === '/memory') return <TerminalPage />
   if (path === '/wallet') return <WalletPage />
   if (path === '/sync') return <SyncPage />
-  return <SurvivePage />
+  return <HeartbeatPage />
 }
 
 createRoot(document.getElementById('root')).render(

@@ -3,7 +3,7 @@ import { BootSection, InstantBootSection } from './boot-section.jsx'
 import { AnimatedEventRows } from './event-log-rows.jsx'
 import { useEventLog } from './use-event-log.js'
 import { useSubsystemSequence } from './use-subsystem-sequence.js'
-import { useSurviveStatus } from './use-survive-status.js'
+import { useHeartbeatStatus } from './use-heartbeat-status.js'
 
 const WALLET_BOOT_ORDER = ['title', 'eventLog', 'token', 'copy', 'view', 'terminal', 'back']
 
@@ -33,7 +33,7 @@ function LargeEventLog({ eventLog }) {
 
 export function WalletPage() {
   const eventLog = useEventLog()
-  const status = useSurviveStatus()
+  const status = useHeartbeatStatus()
   const mint = status.mint ?? null
   const [copied, setCopied] = useState(false)
   const navigateHome = useCallback(() => navigate('/'), [])

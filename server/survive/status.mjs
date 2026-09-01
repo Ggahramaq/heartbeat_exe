@@ -1,12 +1,12 @@
 import { cached } from './cache.mjs'
 import { getBirdeyeTokenOverview } from './birdeye.mjs'
 import { getConfig } from './config.mjs'
-import { SURVIVE_DEPLOYED_AT } from './generated-build-info.mjs'
+import { HEARTBEAT_DEPLOYED_AT } from './generated-build-info.mjs'
 import { getPythSolUsdPrice } from './price.mjs'
 import { connectionFor, getPositiveHolderCount } from './solana.mjs'
 
 const EMPTY = {
-  status: null, rawHolderCount: null, holderCount: null, deploymentTimestamp: SURVIVE_DEPLOYED_AT, ageMs: null,
+  status: null, rawHolderCount: null, holderCount: null, deploymentTimestamp: HEARTBEAT_DEPLOYED_AT, ageMs: null,
   lifetimeGlobalFeesSol: null, todayGlobalFeesSol: null, currentSolUsdPrice: null,
   creatorAddress: null, creatorShareBps: null, claimedCreatorFeesSol: null, unclaimedCreatorFeesSol: null,
   lifetimeCreatorFeesSol: null, todayCreatorFeesSol: null,
@@ -17,21 +17,21 @@ const EMPTY = {
 function base(mint) {
   return {
     mint, ...EMPTY, ca: mint,
-    ageMs: Math.max(0, Date.now() - SURVIVE_DEPLOYED_AT),
+    ageMs: Math.max(0, Date.now() - HEARTBEAT_DEPLOYED_AT),
     fetchedAt: Date.now(),
   }
 }
 // This is deliberately RPC-free. The status poller uses it before its first
 // successful read so visitors can receive a stable LOADING snapshot without
 // causing a live blockchain request of their own.
-export function getSurviveStatusPlaceholder() {
+export function getHeartbeatStatusPlaceholder() {
   return base(getConfig().mint)
 }
-function deploymentAge() { return Math.max(0, Date.now() - SURVIVE_DEPLOYED_AT) }
+function deploymentAge() { return Math.max(0, Date.now() - HEARTBEAT_DEPLOYED_AT) }
 function usd(feesSol, solUsdPrice) { return feesSol === null || solUsdPrice === null ? null : feesSol * solUsdPrice }
 
 function warn(part, error) {
-  if (process.env.NODE_ENV !== 'production') console.warn(`[survive-status:${part}]`, error.message)
+  if (process.env.NODE_ENV !== 'production') console.warn(`[heartbeat-status:${part}]`, error.message)
 }
 
 function normalizeHolders(rawHolderCount, holderSource) {
@@ -68,7 +68,7 @@ async function resolveHolders(connection, mint, heliusRpcUrl) {
   return normalized
 }
 
-export async function getSurviveStatusPart(part = 'all') {
+export async function getHeartbeatStatusPart(part = 'all') {
   const config = getConfig()
   const response = base(config.mint)
   if (!config.mint || !config.rpcUrl) return response

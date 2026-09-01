@@ -34,7 +34,9 @@ export function getConfig() {
   const heliusRpc = heliusUrl(configuredHeliusRpc) ?? (explicitWss ? toHttpUrl(explicitWss) : null)
   const heliusWss = explicitWss ? explicitWss.toString() : heliusRpc ? toWebSocketUrl(heliusRpc) : null
   return {
-    mint: configuredAddress(process.env.SURVIVE_TOKEN_CA),
+    // HEARTBEAT_TOKEN_CA is canonical. Keep the former name during the
+    // deployment migration so existing Vercel projects do not go offline.
+    mint: configuredAddress(process.env.HEARTBEAT_TOKEN_CA || process.env.SURVIVE_TOKEN_CA),
     rpcUrl,
     heliusRpcUrl: heliusRpc?.toString() ?? null,
     heliusWssUrl: heliusWss,

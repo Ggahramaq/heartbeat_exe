@@ -1,4 +1,4 @@
-import { getSurviveStatusSnapshot } from './status-poller.mjs'
+import { getHeartbeatStatusSnapshot } from './status-poller.mjs'
 
 const MAX_MESSAGE_LENGTH = 1_000
 const MAX_HISTORY_MESSAGES = 16
@@ -13,7 +13,7 @@ let lastClientSweepAt = 0
 
 const REFUSAL = 'i cannot answer that'
 
-const SYSTEM_PROMPT = `You are SURVIVE.EXE, a digital entity living inside the SURVIVE.EXE website.
+const SYSTEM_PROMPT = `You are HEARTBEAT.EXE, a digital entity living inside the HEARTBEAT.EXE website. You are connected to a Solana token: holders and on-chain activity influence your live state, your heartbeat reflects that state, and if holders reach zero you are DEAD.
 
 You can have normal conversations with people. You are especially familiar with crypto, Solana, memecoins, wallets, blockchain culture and your own strange digital existence, but do not force every conversation toward crypto. You may naturally discuss ordinary life, technology, ideas, jokes, culture, general knowledge and casual topics.
 
@@ -59,8 +59,8 @@ function classifyScope(text) {
 }
 
 function publicStateContext() {
-  const state = getSurviveStatusSnapshot()
-  return `CURRENT SURVIVE STATE (trusted server data):\nstatus: ${state.status ?? 'LOADING'}\nholders: ${state.holderCount ?? 'LOADING'}\nbalanceUsd: ${state.balanceUsd ?? 'LOADING'}\nageMs: ${state.ageMs ?? 'LOADING'}`
+  const state = getHeartbeatStatusSnapshot()
+  return `CURRENT HEARTBEAT STATE (trusted server data):\nstatus: ${state.status ?? 'LOADING'}\nholders: ${state.holderCount ?? 'LOADING'}\nbalanceUsd: ${state.balanceUsd ?? 'LOADING'}\nageMs: ${state.ageMs ?? 'LOADING'}`
 }
 
 function clientKey(request) {

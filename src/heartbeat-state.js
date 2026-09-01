@@ -6,9 +6,9 @@ export function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum)
 }
 
-// This is the single public heartbeat mapping used by every SURVIVE.EXE
+// This is the single public heartbeat mapping used by every HEARTBEAT.EXE
 // subsystem. It intentionally mirrors the main monitor's live/dead rule.
-export function getSurviveHeartbeat(holderCount, balanceUsd) {
+export function getHeartbeat(holderCount, balanceUsd) {
   if (holderCount === 0) return { isAlive: false, bpm: 0, progress: 0 }
   if (!Number.isFinite(balanceUsd)) {
     const progress = (74 - MIN_ALIVE_BPM) / (MAX_HEARTBEAT_BPM - MIN_ALIVE_BPM)
@@ -21,3 +21,6 @@ export function getSurviveHeartbeat(holderCount, balanceUsd) {
     progress,
   }
 }
+
+// Internal compatibility for legacy imports during the rebrand migration.
+export const getSurviveHeartbeat = getHeartbeat
